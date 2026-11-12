@@ -257,6 +257,8 @@ and the code checks the work before pushing. Every review finding gets fixed, ea
 (or a reviewed reason why none can), and the fixes get one review, not an infinite regress.</p>
 <p>A coding session's last step is now to hand its branch to the queue (&quot;enqueue&quot;). After that I don't touch the branch
 unless the queue asks me to, or I choose to step in.</p>
+<p><strong>See it step by step:</strong> the report draws <a href="report.html#path">a branch's whole path from enqueue to <code>main</code></a>, with the
+rules that pick each next step.</p>
 <h2 id="ideas" data-label="Five ideas">Five things worth stealing</h2>
 <p>The report has seven; these are the five I'd defend hardest.</p>
 <p><strong>1. Let branches land in any order.</strong> This is the fix for attempt zero. The queue still commits a stamp when a check
@@ -1274,7 +1276,7 @@ by hand. Neither ties a later fix back to the landing that needed it, so I don't
 That's the next thing I want to measure. Until then, the <a href="report.html">full report</a> has the mechanism, every chart's
 data to download, and the limits of what the numbers can say.</p>
 
-<footer class="stamp">Built 2026-11-11 · 6a81f382</footer>
+<footer class="stamp">Built 2026-11-12 · 793ba6c0</footer>
 </main>
 <div id="tip" role="tooltip"></div>
 <dialog id="lightbox" aria-label="Enlarged figure"><div id="lb-bar"><span>Click or scroll to zoom, drag to pan, Esc to close</span><button id="lb-close" type="button">Close</button></div><div id="lb-stage"><img id="lb-img" alt="" draggable="false"></div><div id="lb-cap"></div></dialog>
