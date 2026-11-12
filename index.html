@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Merge Queue Notes</title>
+<style>
+/* html-artifact base style. Tokens are the dataviz reference palette under its role names; a doc maps its own
+   meanings onto them in its own CSS (--cache: var(--series-1)), never by editing this file. */
+.viz-root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
+  --series-5: #e87ba4; --series-6: #008300; --series-7: #6250d6; --series-8: #e34948;
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface-1: #1a1a19;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+    --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface-1: #1a1a19;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
+  --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+}
+
+html, body { margin: 0; }
+html { scroll-padding-top: 16px; }
+.viz-root {
+  background: var(--page); color: var(--text-primary); min-height: 100vh;
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  display: grid; grid-template-columns: 220px minmax(0, 900px); justify-content: center; gap: 0 40px;
+  padding: 0 24px; box-sizing: border-box;
+}
+main { padding: 32px 0 48px; min-width: 0; }
+h1 { font-size: 26px; font-weight: 600; line-height: 1.25; margin: 0 0 6px; }
+h2 { font-size: 20px; font-weight: 600; line-height: 1.3; margin: 44px 0 6px; }
+h3 { font-size: 16px; font-weight: 600; margin: 28px 0 4px; }
+p, ul, ol { margin: 6px 0 10px; }
+ul, ol { padding-left: 22px; }
+li { margin: 3px 0; }
+a { color: var(--series-1); }
+.sub { color: var(--text-secondary); font-size: 14px; }
+code { font-size: 13px; background: var(--grid); padding: 0 4px; border-radius: 3px; }
+pre { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+
+#theme {
+  float: right; background: var(--surface-1); color: var(--text-secondary); border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 13px; line-height: 1.4; cursor: pointer;
+}
+
+nav.toc {
+  position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; box-sizing: border-box;
+  padding: 32px 0 24px; font-size: 13.5px; scrollbar-width: thin;
+  /* A fade at the bottom says the list goes on. */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent);
+}
+nav.toc summary {
+  display: block; list-style: none; cursor: default; font-size: 12px; line-height: 28px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px;
+}
+nav.toc summary::-webkit-details-marker { display: none; }
+nav.toc ul, nav.toc ol { list-style: none; padding: 0; margin: 0; }
+nav.toc li { margin: 0; }
+nav.toc li.group > span {
+  display: block; margin: 14px 0 3px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+nav.toc ol { counter-reset: finding; }
+nav.toc ol a::before {
+  counter-increment: finding; content: counter(finding); display: inline-block; width: 1.4em; color: var(--text-muted);
+  font-weight: 400;
+}
+nav.toc a {
+  display: block; padding: 3px 8px; border-left: 2px solid transparent; color: var(--text-secondary);
+  text-decoration: none; line-height: 1.35;
+}
+nav.toc a:hover { color: var(--text-primary); }
+nav.toc a.current { color: var(--text-primary); border-left-color: var(--series-1); font-weight: 600; }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 20px 0 8px; }
+.tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.tile .value { font-size: 26px; font-weight: 600; line-height: 1.2; }
+.tile .meaning { color: var(--text-secondary); font-size: 13.5px; margin-top: 4px; }
+
+.summary { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 4px 20px 10px; margin: 16px 0; }
+.summary h2 { font-size: 16px; margin: 12px 0 4px; }
+.summary li { margin: 6px 0; }
+.next { border-left: 4px solid var(--series-1); padding: 2px 0 2px 12px; margin: 12px 0 0; font-size: 15px; }
+a.more { white-space: nowrap; font-size: 13.5px; }
+
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 14px 0; }
+.card-title { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+.read { color: var(--text-secondary); font-size: 13.5px; margin: 0 0 10px; }
+.cap { color: var(--text-secondary); font-size: 13.5px; margin: 10px 0 0; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--text-secondary); margin: 4px 0 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.lk { width: 16px; height: 2px; border-radius: 1px; display: inline-block; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+.steps { counter-reset: step; list-style: none; padding: 0; }
+.steps li { counter-increment: step; position: relative; padding-left: 34px; margin: 10px 0; }
+.steps li::before {
+  content: counter(step); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--series-1); color: #ffffff; font-size: 12.5px; font-weight: 600; text-align: center; line-height: 22px;
+}
+
+.callout { border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; padding: 10px 14px; margin: 14px 0; background: var(--surface-1); }
+.callout > :first-child { margin-top: 0; }
+.callout > :last-child { margin-bottom: 0; }
+.callout.note { border-left-color: var(--series-1); }
+.callout.warning { border-left-color: var(--warning); }
+
+dl.terms { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+dl.terms dt { font-weight: 600; }
+dl.terms dd { margin: 0; color: var(--text-secondary); }
+
+.table-wrap { overflow-x: auto; margin-top: 8px; }
+table { border-collapse: collapse; font-size: 13px; }
+caption { caption-side: top; text-align: left; font-weight: 600; font-size: 14px; color: var(--text-primary); padding-bottom: 4px; }
+th, td { padding: 4px 10px; border-bottom: 1px solid var(--grid); text-align: left; vertical-align: top; }
+th { color: var(--text-secondary); font-weight: 600; }
+table.num { font-variant-numeric: tabular-nums; }
+table.num td, table.num th { text-align: right; }
+table.num td:first-child, table.num th:first-child { text-align: left; white-space: nowrap; }
+.table-wrap table td.l, .table-wrap table th.l { text-align: left; }
+.table-wrap table td.r, .table-wrap table th.r { text-align: right; }
+.table-note { color: var(--text-muted); font-size: 13px; }
+.scroll-hint { color: var(--text-muted); font-size: 12.5px; margin: 8px 0 0; }
+.scroll-hint + .table-wrap { margin-top: 2px; }
+details { margin-top: 10px; font-size: 13.5px; }
+details > summary { cursor: pointer; color: var(--text-secondary); }
+details a[download] { display: inline-block; margin-top: 8px; }
+
+svg { display: block; overflow: visible; max-width: 100%; height: auto; }
+svg text { fill: var(--text-muted); font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; }
+svg text.ink { fill: var(--text-secondary); }
+svg text.strong { fill: var(--text-primary); font-weight: 600; }
+.grid { stroke: var(--grid); stroke-width: 1; }
+.axis { stroke: var(--axis); stroke-width: 1; }
+.ref { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.xhair { stroke: var(--text-muted); stroke-width: 1; opacity: 0; }
+.xcol:hover .xhair, .xcol:focus .xhair { opacity: 1; }
+.xcol:focus { outline: none; }
+.bar:hover, [data-tip]:not(.xcol):hover { filter: brightness(1.12); }
+[data-tip]:not(.xcol):focus { outline: 2px solid var(--series-1); outline-offset: 1px; }
+
+.diagram { overflow-x: auto; }
+.diagram svg { margin: 0 auto; }
+.d-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .d-dark { display: block; }
+  :root:where(:not([data-theme="light"])) .d-light { display: none; }
+}
+:root[data-theme="dark"] .d-dark { display: block; }
+:root[data-theme="dark"] .d-light { display: none; }
+
+figure { margin: 10px 0 0; }
+figure img { width: 100%; border-radius: 6px; display: block; cursor: zoom-in; }
+figcaption { color: var(--text-secondary); font-size: 13.5px; margin-top: 6px; }
+
+#tip {
+  position: fixed; pointer-events: none; background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  padding: 6px 10px; font-size: 13px; display: none; z-index: 10; max-width: 320px; white-space: pre-line;
+}
+
+#lightbox { width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: var(--page); color: var(--text-primary); }
+#lightbox[open] { display: flex; flex-direction: column; }
+#lb-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; font-size: 13px; color: var(--text-muted); }
+#lb-bar button { background: var(--surface-1); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font: inherit; cursor: pointer; }
+#lb-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+#lb-img, #lb-stage > .lb-svg { position: absolute; left: 0; top: 0; max-width: none; user-select: none; touch-action: none; }
+#lb-stage > .lb-svg { background: var(--surface-1); }
+svg.zoomable { cursor: zoom-in; }
+#lb-cap { color: var(--text-secondary); font-size: 13.5px; padding: 8px 16px 14px; }
+
+footer.stamp { margin-top: 48px; padding-top: 10px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 12px; }
+
+@media (max-width: 1100px) {
+  /* flow-root keeps the nav's top margin inside the root, so the page color reaches the top. */
+  .viz-root { display: flow-root; padding: 0 16px; }
+  main { max-width: 900px; margin: 0 auto; padding-top: 16px; }
+  nav.toc {
+    --menu: 1;
+    position: static; max-height: none; max-width: 900px; margin: 16px auto 0; padding: 12px 16px; mask-image: none;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+  }
+  /* With scripts, a bar across the top that the page scrolls under, and the contents a menu that opens from it,
+     so the title and summary are the first screen. */
+  html.js { scroll-padding-top: 60px; }
+  .js nav.toc {
+    position: sticky; top: 0; z-index: 5; max-width: none; max-height: 80vh; margin: 0 -16px; padding: 8px 16px;
+    border-width: 0 0 1px; border-radius: 0;
+  }
+  .js nav.toc summary {
+    display: list-item; list-style: disclosure-closed inside; cursor: pointer; font-size: 13px; margin: 0;
+    color: var(--text-secondary);
+  }
+  .js nav.toc details[open] > summary { list-style-type: disclosure-open; margin-bottom: 6px; }
+}
+</style>
+<style>.viz-root { --all: var(--series-1); --flake: var(--series-2); }</style>
+</head>
+<body>
+<div class="viz-root">
+<nav class="toc" aria-label="Contents"><button id="theme" type="button">Light / dark</button><details open><summary>Contents</summary><ul><li><a href="#attempt-one">Attempt one</a></li><li><a href="#attempt-two">Attempt two</a></li><li><a href="#ideas">Five ideas</a></li><li><a href="#going">How it&#x27;s going</a></li></ul></details></nav><script>document.documentElement.classList.add('js');{const m=document.querySelector('nav.toc details');if(getComputedStyle(m).getPropertyValue('--menu').trim()==='1')m.open=false;}</script>
+<main>
+<h1>My AI agents write the code. A queue decides what lands.</h1>
+<p class="sub">I stopped being a merge clerk for my own AI agents. Here's what replaced me, what 20 days of it looked like, and what I'd steal from it</p>
+
+
+
+<p>I build a desktop app mostly by running Claude Code sessions in parallel, each on its own branch. Writing the code
+scaled fine. What didn't scale was me. Every branch needed a review, the full test suite on macOS, Windows and Linux,
+and a pile of screenshot checks. Then someone had to merge it, notice <code>main</code> had moved, and do half of it again. At
+the rate branches land now, 11 a day and 20 on a busy one, that's a full-time job as a merge
+clerk.</p>
+<h2 id="attempt-one" data-label="Attempt one">Attempt one: tell an agent how to do it</h2>
+<p>The obvious fix was to write down how to land a branch (merge it into <code>main</code> once it's checked) and let an agent do
+the clerking. The instructions grew to 14,440 words. Keeping them working took 157 commits in
+two weeks, because every review found another place where a rule was missing. &quot;Look at the git server again before
+you merge&quot; had been copied into about nine places, and there was always one more that needed it.</p>
+<p>The lesson: a state machine written as prose doesn't hold together.</p>
+<h2 id="attempt-two" data-label="Attempt two">Attempt two: code runs the loop, AI makes the calls</h2>
+<p>So I split the job in two.</p>
+<p><strong>Plain, tested code runs the loop.</strong> A Mac, a Windows PC and (lately) a Linux server each run a worker. On every
+pass, a worker reads each branch's facts from git and walks one ordered list of rules; the first rule that matches is
+the branch's next step. Nothing is stored outside git, so a crash or a reboot is designed to cost a retry, never a
+wrong merge. The machines never talk to each other, only to the git server.</p>
+<p><strong>AI does only the judgment calls</strong>: reviewing a branch, fixing what the review found, resolving a merge conflict the
+code can't, writing up changed screenshots for me. Each is a fresh session with one job and no memory. It commits,
+and the code checks the work before pushing. Every review finding gets fixed, each fix needs a test that failed first
+(or a reviewed reason why none can), and the fixes get one review, not an infinite regress.</p>
+<p>A coding session's last step is now to hand its branch to the queue (&quot;enqueue&quot;). After that I don't touch the branch
+unless the queue asks me to, or I choose to step in.</p>
+<h2 id="ideas" data-label="Five ideas">Five things I'd steal from it</h2>
+<p><strong>1. Let branches land in any order.</strong> When a check passes, the queue commits a small record (a <em>stamp</em>) naming the
+check and the commit. Only the branch's own later changes make a stamp out of date, never what <code>main</code> brought in. My
+first version re-checked every branch whenever anything landed, which made order matter and everything wait. Now
+<code>main</code> itself gets checked once after each landing, and a failure there becomes a new fix branch.</p>
+<p><strong>2. Write your decisions down where agents must look.</strong> An AI session has no memory, so a choice I made last week
+looks like odd code to the next session, and a reviewer will happily &quot;fix&quot; it. Every ruling I make goes into a dated
+decisions log. Reviewers are told to search it before filing a finding; a fix that needs a decision the log doesn't
+cover comes to me as a question instead of a guess; and when the code breaks a rule the log states, the code is what's
+wrong. It only works as well as I keep the log.</p>
+<p><strong>3. Expect the queue to be its own biggest project.</strong> 106 of the 214 landings (50%)
+changed the queue's own code, tests or prompts. Mostly that was me: 98 of them came from sessions
+I started, and the automatic improvement loop has landed exactly 2 branches so far. The loop
+is still worth having. Every failure is logged, a small, cheap model (Haiku) files each bad landing against a list of
+known problems, a scheduled task opens improvement branches from the top of that list, and since 10 Nov Haiku
+and the big model (Opus) have been reading old transcripts for process problems, with any change they propose held for
+my approval. Flaky tests (ones that fail at random and pass on a rerun) are the other tax: 18% of all
+landings were the queue fixing them, on their own branches, instead of quietly retrying.</p>
+<p><strong>4. Machine time is cheap; waiting isn't.</strong> A median branch got 2.9 hours of machine work and waited a
+median 17 hours to merge. That wait tracked the queue: 6 hours with fewer than 5 other
+branches queued, 35 with 20 or more. Little's law would have told me as much, but seeing it in
+my own numbers changed what I look at: the queue, and the time branches spend waiting on me, which my records can't
+yet split out.</p>
+<p><strong>5. One machine can stall everything.</strong> A queue that needs every machine to agree is only as available as its least
+available machine. When the Windows PC ran low on disk, nothing landed through the queue for 44 hours, and I
+cleared the pile-up by hand, skipping the checks (17 of my 19 hand landings in the period).</p>
+<h2 id="going" data-label="How it's going">How it's going</h2>
+<p>In 20 days the queue landed 214 branches: 172 from my coding sessions, the rest its own fixes
+and improvements. 164 of them never got stuck waiting for me; 50 did at least once. I still approve
+every screenshot change by hand. It all runs on those three machines and one Claude Max subscription.</p>
+<p>What I don't know yet is whether the code that landed is any good. The records measure speed and how often I was
+needed, not the bugs that got through. That's the next thing I want to measure. Until then, the <a href="report.html">full
+report</a> has the mechanism, every chart's data to download, and the limits of what the numbers can say.
+It's layered: its first screen gives the gist in 30 seconds, its <a href="report.html#summary">summary</a> the mechanism in five
+minutes, and the rest the evidence.</p>
+
+<footer class="stamp">Built 2026-11-11 · c725a119</footer>
+</main>
+<div id="tip" role="tooltip"></div>
+<dialog id="lightbox" aria-label="Enlarged figure"><div id="lb-bar"><span>Click or scroll to zoom, drag to pan, Esc to close</span><button id="lb-close" type="button">Close</button></div><div id="lb-stage"><img id="lb-img" alt="" draggable="false"></div><div id="lb-cap"></div></dialog>
+</div>
+<script>
+// html-artifact base behavior. The page reads fine without it: links, tables and SVG need no JS.
+(() => {
+  const root = document.documentElement;
+
+  document.getElementById('theme').addEventListener('click', () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+  });
+
+  const tip = document.getElementById('tip');
+  const showTip = e => {
+    const node = e.target.closest('[data-tip]');
+    if (!node) return;
+    tip.textContent = node.dataset.tip;
+    tip.style.display = 'block';
+    let x = e.clientX, y = e.clientY;
+    if (x === undefined) { const b = node.getBoundingClientRect(); x = b.right; y = b.top; }
+    tip.style.left = Math.max(8, Math.min(x + 14, innerWidth - tip.offsetWidth - 8)) + 'px';
+    tip.style.top = Math.max(8, Math.min(y + 14, innerHeight - tip.offsetHeight - 8)) + 'px';
+  };
+  const hideTip = () => { tip.style.display = 'none'; };
+  for (const node of document.querySelectorAll('[data-tip]')) {
+    node.addEventListener('pointermove', showTip); node.addEventListener('focus', showTip);
+    node.addEventListener('pointerleave', hideTip); node.addEventListener('blur', hideTip);
+  }
+
+  // The zoom viewer shows a figure's image, or a copy of a chart or diagram whose text the page has shrunk.
+  const lb = document.getElementById('lightbox'), lbStage = document.getElementById('lb-stage');
+  const lbImg = document.getElementById('lb-img'), lbCap = document.getElementById('lb-cap');
+  const view = { s: 1, fit: 1, x: 0, y: 0, w: 0, h: 0 };
+  let lbFrom = null, lbEl = lbImg, drag = null, dragged = false;
+  function lbPlace() {
+    const W = lbStage.clientWidth, H = lbStage.clientHeight, w = view.w * view.s, h = view.h * view.s;
+    view.x = w <= W ? (W - w) / 2 : Math.min(0, Math.max(W - w, view.x));
+    view.y = h <= H ? (H - h) / 2 : Math.min(0, Math.max(H - h, view.y));
+    lbEl.style.width = w + 'px'; lbEl.style.height = h + 'px';
+    lbEl.style.transform = `translate(${view.x}px,${view.y}px)`;
+    lbEl.style.cursor = view.s > view.fit ? (drag ? 'grabbing' : 'grab') : 'zoom-in';
+  }
+  // s is screen px per native px; the point under (cx, cy) stays put.
+  function lbZoom(s, cx, cy) {
+    s = Math.min(Math.max(s, view.fit), 8);
+    view.x = cx - (cx - view.x) * s / view.s; view.y = cy - (cy - view.y) * s / view.s; view.s = s;
+    lbPlace();
+  }
+  const lbFit = () => { view.fit = Math.min(1, (lbStage.clientWidth - 32) / view.w, (lbStage.clientHeight - 32) / view.h); };
+  const stagePt = e => { const b = lbStage.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  const onSubject = e => lbEl.contains(e.target);
+  function lbOpen(from) {
+    lbFrom = from;
+    let cap = [];
+    if (from.localName === 'img') {
+      view.w = from.naturalWidth; view.h = from.naturalHeight;
+      lbImg.src = from.src; lbImg.alt = from.alt; lbEl = lbImg;
+      const fc = from.closest('figure').querySelector('figcaption');
+      if (fc) cap = [...fc.childNodes];
+    } else {
+      // Native size is the viewBox: the size the chart's text was drawn for.
+      const vb = from.viewBox.baseVal;
+      view.w = vb.width; view.h = vb.height;
+      lbEl = from.cloneNode(true);
+      // The copy carries no listeners, so its marks shouldn't take focus either.
+      for (const n of [lbEl, ...lbEl.querySelectorAll('[tabindex]')]) n.removeAttribute('tabindex');
+      // Mermaid caps its SVG at native width inline, which would stop the zoom there.
+      lbEl.style.maxWidth = 'none';
+      lbEl.classList.add('lb-svg');
+      lbStage.append(lbEl);
+      lbImg.hidden = true;
+      const card = from.closest('.card');
+      if (card) cap = [...card.querySelectorAll(':scope > .card-title, :scope > .cap')];
+    }
+    lbCap.replaceChildren(...cap.map(n => n.cloneNode(true)));
+    lb.showModal(); lbFit(); view.s = view.fit; lbPlace();
+  }
+  const openOnKey = (el) => el.addEventListener('keydown', e => {
+    // without preventDefault, Enter's keypress clicks the close button showModal just focused
+    if (e.target === el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); lbOpen(el); }
+  });
+  for (const img of document.querySelectorAll('figure img')) {
+    img.setAttribute('tabindex', '0'); img.setAttribute('role', 'button');
+    img.addEventListener('click', () => lbOpen(img));
+    openOnKey(img);
+  }
+  // Charts and diagrams zoom only while drawn smaller than native, i.e. while their text is shrunk.
+  const shrunk = svg => svg.viewBox.baseVal && svg.viewBox.baseVal.width > svg.getBoundingClientRect().width + 1;
+  const zoomables = [...document.querySelectorAll('main .card svg, main .diagram svg')].filter(s => !s.parentElement.closest('svg'));
+  function markZoomable() {
+    for (const svg of zoomables) {
+      const on = shrunk(svg);
+      svg.classList.toggle('zoomable', on);
+      if (on) svg.setAttribute('tabindex', '0'); else svg.removeAttribute('tabindex');
+    }
+  }
+  for (const svg of zoomables) {
+    svg.addEventListener('click', () => { if (svg.classList.contains('zoomable')) lbOpen(svg); });
+    openOnKey(svg);
+  }
+  markZoomable();
+  lbStage.addEventListener('click', e => { if (onSubject(e) && !dragged) lbZoom(view.s > view.fit ? view.fit : Math.max(1, 2 * view.fit), ...stagePt(e)); });
+  lbStage.addEventListener('pointerdown', e => {
+    if (!onSubject(e) || view.s <= view.fit) return;
+    drag = { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY };
+    // On the subject, not the stage: the click that follows goes to the capturing element, and a click on the
+    // stage is a click on the backdrop.
+    lbEl.setPointerCapture(e.pointerId); lbPlace();
+  });
+  lbStage.addEventListener('pointermove', e => {
+    if (!drag) return;
+    dragged ||= Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 4;
+    view.x += e.clientX - drag.x; view.y += e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+    lbPlace();
+  });
+  for (const t of ['pointerup', 'pointercancel']) lbStage.addEventListener(t, () => { if (drag) { drag = null; lbPlace(); } });
+  lb.addEventListener('pointerdown', () => { dragged = false; });
+  // Everything but the subject and its caption is backdrop.
+  lb.addEventListener('click', e => { if (!dragged && !onSubject(e) && !lbCap.contains(e.target)) lb.close(); });
+  lb.addEventListener('wheel', e => { e.preventDefault(); lbZoom(view.s * Math.exp(-e.deltaY / 400), ...stagePt(e)); }, { passive: false });
+  lb.addEventListener('close', () => {
+    if (lbEl !== lbImg) { lbEl.remove(); lbEl = lbImg; lbImg.hidden = false; }
+    if (lbFrom) lbFrom.focus();
+  });
+  document.getElementById('lb-close').addEventListener('click', () => lb.close());
+  addEventListener('resize', () => {
+    markZoomable();
+    if (!lb.open) return;
+    const atFit = view.s === view.fit;
+    lbFit(); view.s = atFit ? view.fit : Math.max(view.s, view.fit); lbPlace();
+  });
+
+  // A table wider than its column scrolls sideways, and nothing else on screen says so: graders and readers took
+  // the cut-off columns for missing ones.
+  const wraps = [...document.querySelectorAll('main .table-wrap')].map(w => {
+    const hint = document.createElement('p');
+    hint.className = 'scroll-hint'; hint.hidden = true;
+    hint.textContent = `Scroll sideways for all ${w.querySelectorAll('thead th').length} columns →`;
+    w.before(hint);
+    return [w, hint];
+  });
+  const markWide = () => { for (const [w, hint] of wraps) hint.hidden = !(w.scrollWidth > w.clientWidth + 1); };
+  markWide();
+  addEventListener('resize', markWide);
+  // toggle doesn't bubble; a table in a closed fold has no width until it opens.
+  document.addEventListener('toggle', markWide, true);
+
+  // On a narrow screen the contents are a menu (base.css sets --menu): picking an entry closes it. On a wide one
+  // they are a sidebar that stays open.
+  const menu = document.querySelector('nav.toc details');
+  const isMenu = () => getComputedStyle(menu).getPropertyValue('--menu').trim() === '1';
+  let wasMenu = isMenu();
+  menu.querySelector('summary').addEventListener('click', e => { if (!isMenu()) e.preventDefault(); });
+  menu.addEventListener('click', e => { if (isMenu() && e.target.closest('a')) menu.open = false; });
+  addEventListener('resize', () => {
+    const now = isMenu();
+    if (now !== wasMenu) { menu.open = !now; wasMenu = now; }
+  });
+
+  // Highlight the contents entry of the last heading scrolled past the top third of the window.
+  const links = new Map([...document.querySelectorAll('nav.toc a')].map(a => [decodeURIComponent(a.hash.slice(1)), a]));
+  const heads = [...links.keys()].map(id => document.getElementById(id)).filter(Boolean);
+  function markCurrent() {
+    let cur = heads[0];
+    for (const h of heads) if (h.getBoundingClientRect().top < innerHeight / 3) cur = h;
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2) cur = heads[heads.length - 1];
+    for (const a of links.values()) a.classList.remove('current');
+    if (!cur) return;
+    const a = links.get(cur.id);
+    a.classList.add('current');
+    // A sidebar taller than the window scrolls on its own; keep the reader's place in view.
+    const nav = a.closest('nav.toc');
+    if (nav.scrollHeight > nav.clientHeight) {
+      const n = nav.getBoundingClientRect(), b = a.getBoundingClientRect();
+      if (b.top < n.top + 40 || b.bottom > n.bottom - 40) nav.scrollTop += b.top - n.top - nav.clientHeight / 3;
+    }
+  }
+  if (heads.length) {
+    let queued = false;
+    addEventListener('scroll', () => {
+      if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; markCurrent(); }); }
+    }, { passive: true });
+    markCurrent();
+  }
+})();
+</script>
+</body>
+</html>
