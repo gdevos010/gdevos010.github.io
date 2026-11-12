@@ -221,9 +221,9 @@ footer.stamp { margin-top: 48px; padding-top: 10px; border-top: 1px solid var(--
 <nav class="toc" aria-label="Contents"><button id="theme" type="button">Light / dark</button><details open><summary>Contents</summary><ul><li><a href="#summary">Summary</a></li><li><a href="#problem">The problem</a></li><li class="group"><span>How it works</span><ul><li><a href="#loop">Code runs the loop</a></li><li><a href="#judgment">AI for judgment</a></li><li><a href="#stamps">Landing in any order</a></li><li><a href="#human">My part, my rulings</a></li><li><a href="#improve">Failures, improvement</a></li><li><a href="#record">Results</a></li><li><a href="#cost">What it takes to run</a></li></ul></li><li class="group"><span>Takeaways</span><ul><li><a href="#copy">Ideas to copy</a></li></ul></li><li class="group"><span>Reference</span><ul><li><a href="#limits">Limits</a></li><li><a href="#terms">Terms</a></li><li><a href="#data">The data</a></li></ul></li></ul></details></nav><script>document.documentElement.classList.add('js');{const m=document.querySelector('nav.toc details');if(getComputedStyle(m).getPropertyValue('--menu').trim()==='1')m.open=false;}</script>
 <main>
 <h1>I handed my merges to a queue: plain code and fresh AI sessions landed 214 branches in 20 days</h1>
-<p class="sub">How my merge queue for AI-written branches works, what it did from 23 Oct to 11 Nov 2026, and the ideas in it others could steal. Read the first screen for the gist, the summary for the mechanism, the rest for the evidence</p>
+<p class="sub">How my merge queue for AI-written branches works, what it did from 23 Oct to 11 Nov 2026, and the ideas in it others could steal. Read the first screen for the gist, the summary for the mechanism, the rest for the evidence. It measures speed and how often I was needed, not code quality</p>
 
-<div class="tiles"><div class="tile"><div class="value">214</div><div class="meaning">branches the queue landed in 20 days: 172 from coding sessions, the rest its own fixes and improvements. I landed 19 more myself, skipping the checks</div></div><div class="tile"><div class="value">2.9 h</div><div class="meaning">of machine work on a median branch, summed across machines. Its wait to merge, a median 17 h, grew with the queue: 6 h with under 5 others queued, 35 h with 20 or more</div></div><div class="tile"><div class="value">9</div><div class="meaning">queue AI sessions (review, fixes, conflicts) a median landing used, all on one flat-rate plan: 7 when nothing failed, 14 when it got stuck</div></div><div class="tile"><div class="value">164 of 214</div><div class="meaning">landed without ever getting stuck and waiting for my help; 50 did</div></div></div>
+<div class="tiles"><div class="tile"><div class="value">214</div><div class="meaning">branches the queue landed in 20 days: 172 from coding sessions, the rest its own fixes and improvements. I landed 19 more myself, skipping the checks</div></div><div class="tile"><div class="value">2.9 h</div><div class="meaning">of machine work on a median branch, summed across machines. Its wait to merge, a median 17 h, grew with the queue: 6 h with under 5 others queued, 35 h with 20 or more</div></div><div class="tile"><div class="value">9</div><div class="meaning">queue AI sessions (review, fixes, conflicts) a median landing used, all on one flat-rate plan: 7 when nothing failed, 14 when it got stuck</div></div><div class="tile"><div class="value">164 of 214</div><div class="meaning">never got stuck (two failed tries at one step); 50 did. Waits for my screenshot approval aren't counted</div></div></div>
 <section class="summary"><h2 id="summary">Summary</h2><ul><li><b>Every branch's last step is "enqueue"; then a queue on three machines reviews it, tests it on macOS, Windows and Linux, and merges it.</b> In my experience that bookkeeping, not the coding, is what limits one person running many AI sessions at once. <a class="more" href="#problem">Details →</a></li><li><b>Plain code runs the loop, working out each branch's next step again from git on every pass.</b> No state lives outside git, so a crash or a lost file is designed to cost a retry, never a wrong merge. <a class="more" href="#loop">Details →</a></li><li><b>AI makes the judgment calls, each in a fresh one-job session.</b> No session carries state from one step to the next, so any step can be rerun; the rule is that every review finding is fixed, or sent to the backlog for one of four stated reasons. <a class="more" href="#judgment">Details →</a></li><li><b>Checks are stamped on commits, and only a branch's own changes make a stamp stale.</b> So branches land in any order, and main is checked after each landing instead. <a class="more" href="#stamps">Details →</a></li><li><b>I step in only to approve screenshots, help a stuck branch, or land one myself by exception.</b> So my attention goes to calls only a person should make, and my rulings go into a decisions log that reviewers and fixers are told to follow, to keep later agents from undoing them. <a class="more" href="#human">Details →</a></li><li><b>A failure a branch causes goes to a fix session, and a flaky test to its own fix branch, never a silent retry.</b> The queue logs each failure, and a scheduled task works through that list, which opened 2 of the 214 landings. <a class="more" href="#improve">Details →</a></li><li><b>A branch's wait grew with the queue: a median 6 hours with under 5 others queued, 35 with 20 or more.</b> So the wait, not the 2.9 h of machine work, is what to shorten, though the records can't split it into queueing for busy machines, waiting for me, and one 44-hour stall. <a class="more" href="#record">Details →</a></li></ul></section>
 <h2 id="problem" data-label="The problem">My AI sessions finished branches faster than I could check and merge them</h2>
 <p>Here's the problem the queue solves, and the one rule it enforces.</p>
@@ -239,7 +239,8 @@ place where a rule (&quot;look at the git server again before a merge&quot;) was
 doesn't hold. So I rewrote it as tested code, kept AI for the judgment calls, and called it the land queue (from
 &quot;landing&quot; a branch on <code>main</code>).</p>
 <p>Now a session's last step is to push its branch and <em>enqueue</em> it, which adds an empty marker commit. After that,
-nobody tracks the branch or merges it by hand, me included, except in the cases in <a href="#human">my part</a>. The queue
+nobody tracks the branch or merges it by hand, me included, except in the cases listed under
+<a href="#human">My part, my rulings</a>. The queue
 merges a branch only when four things hold at its latest commit:</p>
 <ol>
 <li><strong>Reviewed.</strong> An AI review covers every commit of the branch's own.</li>
@@ -283,9 +284,8 @@ under git refs that branches don't use. Each pass of a worker goes like this:</p
 </code></pre></details></div>
 <p>The rules are checked in a fixed order, and the first that matches wins:</p>
 <div class="table-wrap"><table><caption>The rules, in order (simplified)</caption><thead><tr><th class="r"></th><th class="l">If…</th><th class="l">then the next action is</th></tr></thead><tbody><tr><td class="r">1</td><td class="l">the branch is merged</td><td class="l">nothing</td></tr><tr><td class="r">2</td><td class="l">it is stuck</td><td class="l">wait for me</td></tr><tr><td class="r">3</td><td class="l">it must land after another branch that is still queued</td><td class="l">wait for that branch</td></tr><tr><td class="r">4</td><td class="l">it has commits no review covers</td><td class="l">review</td></tr><tr><td class="r">5</td><td class="l">it has rejected screenshots, a flake or a failed main check showing on this machine</td><td class="l">fix</td></tr><tr><td class="r">6</td><td class="l">it has screenshots pending</td><td class="l">wait for my approval</td></tr><tr><td class="r">7</td><td class="l">its merge into main would conflict</td><td class="l">catch-up</td></tr><tr><td class="r">8</td><td class="l">the Linux pre-check hasn&#x27;t run on its changes</td><td class="l">pre-check (Linux), or wait for it</td></tr><tr><td class="r">9</td><td class="l">this machine&#x27;s stamps aren&#x27;t current</td><td class="l">check</td></tr><tr><td class="r">10</td><td class="l">the other machine&#x27;s stamps aren&#x27;t current</td><td class="l">wait for it</td></tr><tr><td class="r">11</td><td class="l">it doesn&#x27;t contain main&#x27;s latest commit</td><td class="l">catch-up</td></tr><tr><td class="r">12</td><td class="l">none of the above</td><td class="l">merge</td></tr></tbody></table></div><p class="table-note">The real list has a few more waits, for loops in the after-another-branch chain and for work that shows only on the other machine.</p>
-<p>Because nothing lives outside git, a crash, a reboot or a deleted local file is designed to cost a retry, never a
-wrong merge. Any worker, or I, can pick up a landing from what git shows. And each rule lives in one place, which is
-what the prose version never managed.</p>
+<p>Because nothing lives outside git, any worker, or I, can pick up a landing from what git shows after a crash, a
+reboot or a deleted local file. And each rule lives in one place, which is what the prose version never managed.</p>
 <h2 id="judgment" data-label="AI for judgment">AI does only the judgment calls, each in a fresh session with one job</h2>
 <p>The queue's AI steps, and the rules that keep them honest.</p>
 <p>Every step that needs judgment starts a new headless Claude Code session with one prompt and one job. No session
@@ -337,17 +337,17 @@ writes no stamp: a Linux pass never makes a branch landable by itself.</li>
 branch, enqueued like any other, and fixed on the machine where it failed.</li>
 </ul>
 <p>A pre-push git hook, installed in every checkout, refuses a push to <code>main</code> whose landing lacks current stamps or a
-review, whoever pushes. It guards against mistakes, not against someone who turns hooks off.</p>
+review, whoever pushes. This hook and the approval command below both guard against mistakes, not against someone
+determined; neither is a lock.</p>
 <h2 id="human" data-label="My part, my rulings">I step in only to approve screenshots, help stuck branches, and land a branch myself by exception</h2>
-<p>What still reaches me, how my decisions outlive the sessions that never saw me make them, and how the queue keeps
-those calls mine.</p>
+<p>What still reaches me, how my decisions are kept once I've made them, and how the queue keeps those calls mine.</p>
 <p>My input goes in at the start of a piece of work, in the session's brief. After enqueue, I'm needed only in these
 cases, each with one phone notification:</p>
 <ul>
 <li><strong>Screenshots to approve.</strong> A check that draws new or changed screens commits them as pending, with a report an AI
 session writes comparing each with its baseline and with the approved design mockups. I approve or reject them with
 one command on my own terminal. The command refuses to run without a real terminal, and the queue's instructions
-forbid AI sessions from running it. Like the hook, that guards against mistakes; it isn't a lock. An approval that
+forbid AI sessions from running it. An approval that
 covers a whole set stamps that check itself, so nothing reruns. A rejected set becomes a finding the queue fixes.</li>
 <li><strong>A stuck branch.</strong> Two failed tries at the same step stop the branch, and it waits for me (see
 <a href="#improve">failures and improvement</a>). In the period, 50 of the 214 landings got stuck at least once.</li>
@@ -369,8 +369,7 @@ and doesn't hold the branch.</li>
 <li><strong>Where a doc states a rule and the code breaks it, the code is the defect.</strong> The doc changes only when I change
 the ruling.</li>
 </ol>
-<p>This is what lets many sessions, none of which saw me decide, keep to what I decided. It works only as well as I keep
-the log: a ruling I never wrote down protects nothing.</p>
+<p>It works only as well as I keep the log: a ruling I never wrote down protects nothing.</p>
 <h2 id="improve" data-label="Failures, improvement">A failure a branch causes gets a fix, every failure is logged, and a scheduled task works through the log</h2>
 <p>How the queue handles a failure, and the loops that turn its failures into changes to itself.</p>
 <h3 id="a-failure-a-branch-causes-gets-a-fix-never-a-silent-retry">A failure a branch causes gets a fix, never a silent retry</h3>
@@ -406,12 +405,16 @@ transcript for process problems, and Opus checks what it finds against the evide
 queue's rules or prompts waits for my approval and never lands on its own, so the judge doesn't rewrite the rules
 it's judged by without a person agreeing.</li>
 </ol>
-<p>The queue is under constant work: 106 of the 214 landings (50%) changed its code, tests or
-AI prompts. 98 came from sessions I started, 6 from the queue's own flake
-fixes, and only 2 from the scheduled task; a few touched the queue only in passing.</p>
+<p>Together, the logs, the stuck branches that ping me, the problem list, the scheduled task and the transcript reader
+make one improvement loop, and its output is work on the queue itself: 106 of the 214 landings
+(50%) changed its code, tests or AI prompts. 98 came from sessions I started,
+6 from the queue's own flake fixes, and 2 from the scheduled task; a few
+touched the queue only in passing. The records don't say which part of the loop prompted each one.</p>
 <h2 id="record" data-label="Results">A branch's wait grew with the number of branches queued with it, and one machine low on disk stalled the queue for 44 hours</h2>
 <p>What the queue landed, how long a branch waited, and how often one needed me. This measures speed and help, not the
-quality of what landed (see <a href="#limits">limits</a>).</p>
+quality of what landed. The only quality signals in the records are thin: one landing fixed a failed
+check of <code>main</code>, and git shows two reverts on <code>main</code> in the period, one of them of a branch I'd
+landed by hand. Neither ties a later fix back to the landing that needed it (see <a href="#limits">limits</a>).</p>
 <div class="card"><h4 class="card-title">Branches landed through the queue, running total</h4><p class="read">Each step up is one branch merged into main. The lower line counts only the branches the queue opened to fix flaky tests in the project's checks.</p><svg viewBox="0 0 640 320" role="img" aria-label="Running total of branches landed, all and flake fixes" xmlns="http://www.w3.org/2000/svg"><rect x="351.1" y="16" width="55.2" height="264" style="fill:var(--text-muted);fill-opacity:0.1"/><text class="ink" x="356.1" y="30">stall</text><line class="grid" x1="44" x2="624" y1="280" y2="280"/><text x="38" y="280" dy="0.32em" text-anchor="end">0</text><line class="grid" x1="44" x2="624" y1="222.9" y2="222.9"/><text x="38" y="222.9" dy="0.32em" text-anchor="end">50</text><line class="grid" x1="44" x2="624" y1="165.8" y2="165.8"/><text x="38" y="165.8" dy="0.32em" text-anchor="end">100</text><line class="grid" x1="44" x2="624" y1="108.7" y2="108.7"/><text x="38" y="108.7" dy="0.32em" text-anchor="end">150</text><line class="grid" x1="44" x2="624" y1="51.5" y2="51.5"/><text x="38" y="51.5" dy="0.32em" text-anchor="end">200</text><text x="54.3" y="296" text-anchor="middle">24 Oct</text><text x="114.9" y="296" text-anchor="middle">26 Oct</text><text x="175.6" y="296" text-anchor="middle">28 Oct</text><text x="236.2" y="296" text-anchor="middle">30 Oct</text><text x="296.9" y="296" text-anchor="middle">1 Nov</text><text x="357.5" y="296" text-anchor="middle">3 Nov</text><text x="418.1" y="296" text-anchor="middle">5 Nov</text><text x="478.8" y="296" text-anchor="middle">7 Nov</text><text x="539.4" y="296" text-anchor="middle">9 Nov</text><text x="600.1" y="296" text-anchor="middle">11 Nov</text><line class="axis" x1="44" x2="624" y1="280" y2="280"/><text class="ink" x="334" y="316" text-anchor="middle">date (US Pacific time)</text><text class="ink" x="44" y="12" text-anchor="start">branches landed, running total</text><path d="M44,280 L44,278.9 L44.7,277.7 L49.2,276.6 L50.5,275.4 L55.6,274.3 L56.6,273.1 L57.3,272 L57.7,270.9 L58.4,269.7 L68.4,268.6 L70.6,267.4 L71.3,266.3 L74.9,265.2 L76.2,264 L82.6,262.9 L83.4,261.7 L84.2,260.6 L89.6,259.4 L91.7,258.3 L93.4,257.2 L94.4,256 L95.1,254.9 L96.2,253.7 L97.8,252.6 L101.9,251.4 L103.7,250.3 L104.7,249.2 L105.1,248 L106.2,246.9 L125.6,245.7 L126.2,244.6 L126.9,243.4 L127.5,242.3 L128.1,241.2 L128.6,240 L129.6,238.9 L130.8,237.7 L131.8,236.6 L133,235.5 L133.7,234.3 L145.8,233.2 L157.4,232 L160.7,230.9 L160.7,229.7 L162.8,228.6 L163.5,227.5 L164.6,226.3 L165.5,225.2 L167.7,224 L174.6,222.9 L175.2,221.7 L176.5,220.6 L178,219.5 L189.9,218.3 L199.2,217.2 L204.5,216 L205.5,214.9 L206.2,213.7 L223.6,212.6 L226.3,211.5 L227.1,210.3 L231.3,209.2 L238.4,208 L240.1,206.9 L241.1,205.8 L244,204.6 L244.6,203.5 L246.6,202.3 L249.4,201.2 L252.5,200 L252.8,198.9 L257.6,197.8 L258.6,196.6 L258.6,195.5 L259.8,194.3 L260.5,193.2 L261.7,192 L262,190.9 L266.4,189.8 L268.8,188.6 L269.1,187.5 L272.5,186.3 L273.4,185.2 L278.2,184 L281.4,182.9 L282,181.8 L284,180.6 L284.2,179.5 L284.8,178.3 L286.1,177.2 L287,176.1 L289.7,174.9 L291.4,173.8 L291.8,172.6 L293.1,171.5 L293.8,170.3 L293.9,169.2 L295.8,168.1 L297.7,166.9 L299.7,165.8 L300.3,164.6 L302.3,163.5 L302.8,162.3 L303.3,161.2 L303.9,160.1 L304.5,158.9 L305.6,157.8 L308.7,156.6 L308.8,155.5 L316.4,154.4 L318.1,153.2 L318.5,152.1 L318.8,150.9 L319.7,149.8 L320.8,148.6 L325.7,147.5 L331.4,146.4 L335.8,145.2 L351.1,144.1 L406.3,142.9 L406.8,141.8 L408,140.6 L409,139.5 L410.2,138.4 L412,137.2 L413.9,136.1 L414.9,134.9 L415.9,133.8 L417.6,132.6 L422.5,131.5 L426.2,130.4 L431.2,129.2 L432.2,128.1 L432.5,126.9 L433.6,125.8 L438.4,124.7 L442.5,123.5 L442.6,122.4 L443.8,121.2 L443.9,120.1 L446.6,118.9 L447.5,117.8 L449.2,116.7 L452.4,115.5 L454.4,114.4 L466.7,113.2 L477.1,112.1 L478.7,110.9 L479.5,109.8 L480.5,108.7 L481.7,107.5 L483.2,106.4 L483.9,105.2 L485,104.1 L485.6,102.9 L487.4,101.8 L487.4,100.7 L488.8,99.5 L489.5,98.4 L492.3,97.2 L493.8,96.1 L496.7,95 L497.3,93.8 L498.4,92.7 L498.4,91.5 L499,90.4 L500.3,89.2 L501,88.1 L503.4,87 L526.3,85.8 L529.4,84.7 L530.3,83.5 L532.4,82.4 L534.5,81.2 L535.7,80.1 L558.4,79 L561.3,77.8 L561.6,76.7 L562.7,75.5 L563.8,74.4 L565.6,73.3 L569.6,72.1 L571.5,71 L572.9,69.8 L574,68.7 L575,67.5 L578.2,66.4 L580.7,65.3 L581.4,64.1 L582.5,63 L583.9,61.8 L588,60.7 L588.7,59.5 L588.8,58.4 L598.5,57.3 L600.4,56.1 L601.5,55 L602.4,53.8 L603.2,52.7 L606.1,51.5 L611,50.4 L611,49.3 L611.8,48.1 L614,47 L615.5,45.8 L616.7,44.7 L617.5,43.6 L618.3,42.4 L618.9,41.3 L620.4,40.1 L621.5,39 L622.2,37.8 L622.8,36.7 L624,35.6" style="fill:none;stroke:var(--all);stroke-width:2;stroke-linejoin:round;stroke-linecap:round"/><path d="M44,280 L96.2,278.9 L129.6,277.7 L133,276.6 L133.7,275.4 L162.8,274.3 L163.5,273.1 L165.5,272 L227.1,270.9 L246.6,269.7 L252.5,268.6 L252.8,267.4 L260.5,266.3 L262,265.2 L268.8,264 L269.1,262.9 L284,261.7 L291.4,260.6 L293.9,259.4 L295.8,258.3 L302.3,257.2 L303.9,256 L304.5,254.9 L408,253.7 L409,252.6 L422.5,251.4 L432.5,250.3 L443.9,249.2 L480.5,248 L487.4,246.9 L497.3,245.7 L498.4,244.6 L530.3,243.4 L558.4,242.3 L561.3,241.2 L562.7,240 L563.8,238.9 L581.4,237.7 L583.9,236.6 L622.2,235.5" style="fill:none;stroke:var(--flake);stroke-width:2;stroke-linejoin:round;stroke-linecap:round"/><g class="xcol" data-tip="23 Oct 15:50
 0 · all landings
 1 · all landings
@@ -672,9 +675,9 @@ quality of what landed (see <a href="#limits">limits</a>).</p>
 <p>A branch's wait rises with how many other branches are queued, so a single median wait says little on its own; the
 chart sets each wait against the number of other branches queued when it was enqueued. Over the period the wait grew
 too, as the table shows. Part of that is a longer queue: a median 9 other branches were queued with each
-branch merged before 2 Nov, and 15 after. But the wait for each branch in the queue (its wait divided
-by the others queued plus itself) rose as well, from a median 1.1 h to 1.8 h, so a longer queue
-isn't the whole story. Every wait here is biased low: landings by exception and branches still queued are left out
+branch merged before 2 Nov, and 15 after. But the wait grew even per queued branch. Divide each
+branch's wait by the size of the queue it joined (the others queued, plus itself): that rose from a median
+1.1 h before 2 Nov to 1.8 h after. A longer queue isn't the whole story. Every wait here is biased low: landings by exception and branches still queued are left out
 (see <a href="#limits">limits</a>).</p>
 <p>The slowest week holds the queue's one long stall: from 2 Nov 17:56 to 4 Nov 13:37, 44 hours, nothing
 landed through the queue. The Windows PC's disk had fallen below the queue's free-space limit, which holds every
@@ -709,7 +712,7 @@ steps, including AI sessions running beside a check.</li>
 <li><strong>Make enqueue the session's last step</strong>, and let nothing after it need a person except decisions only a person
 can make. (<a href="#problem">The problem</a>)</li>
 <li><strong>Keep the loop in plain code and all state in git</strong>, recomputing the next step from scratch each pass, so a crash
-is designed to cost a retry. (<a href="#loop">Code runs the loop</a>)</li>
+is cheap. (<a href="#loop">Code runs the loop</a>)</li>
 <li><strong>Give each judgment one fresh AI session with one job</strong>, and require fixes to be proven by a test that fails
 first. (<a href="#judgment">AI for judgment</a>)</li>
 <li><strong>Stamp checks on commits and count only a branch's own changes against them</strong>, then check <code>main</code> after each
@@ -724,7 +727,7 @@ common ones, and have a person approve what an AI judge proposes. (<a href="#imp
 <ul>
 <li><strong>Quality isn't measured here.</strong> The records count speed and help needed, not what the landed code was like: bugs
 that got through, reverts, or how often <code>main</code>'s check after a landing failed. The one signal in them is that
-1 landing fixed a failed check of <code>main</code>.</li>
+one landing fixed a failed check of <code>main</code>.</li>
 <li><strong>One project, one developer, 20 days.</strong> These are my queue's numbers on my project, not a benchmark. The
 queue's own code changed throughout, since it lands its own changes, so the period mixes versions of it.</li>
 <li><strong>Enqueue to merge is wall-clock time, waits included.</strong> It counts time spent waiting for my approvals or help, and
@@ -776,7 +779,7 @@ limits in the steps (look intervals, claim times, two tries, eight flakes to a b
 session. The code and notes belong to a private project and aren't published.</li>
 </ul>
 
-<footer class="stamp">Built 2026-11-11 · 00997283</footer>
+<footer class="stamp">Built 2026-11-11 · 8f88675d</footer>
 </main>
 <div id="tip" role="tooltip"></div>
 <dialog id="lightbox" aria-label="Enlarged figure"><div id="lb-bar"><span>Click or scroll to zoom, drag to pan, Esc to close</span><button id="lb-close" type="button">Close</button></div><div id="lb-stage"><img id="lb-img" alt="" draggable="false"></div><div id="lb-cap"></div></dialog>
